@@ -1,6 +1,6 @@
 const { default: axios } = require("axios");
 const express = require("express");
-const { connect } = require("mongoose");
+const connectDB = require("./utils/connectdb");
 // const { default: placeRoutes } = require("./routes/routes");
 
 const port = 3000;
@@ -14,14 +14,13 @@ app.listen(port, async () => {
   // LOGGER INFO
   console.log(`Server is running on port ${port}`);
 
-  // await connect();
+  connectDB(); // Database Connection 
 
   app.get("/", (req, res) => {
     res.sendStatus(200);
   });
 
-
-//   USING OPENMAP API 
+  //   USING OPENMAP API
   app.get("/api/places/info/", async (req, res) => {
     const overpassEndpoint = "https://overpass-api.de/api/interpreter";
 
@@ -31,9 +30,8 @@ app.listen(port, async () => {
     }
 
     if (!long) {
-      res.send("Invalid latitude");
+      res.send("Invalid longitude");
     }
-
 
     // const boundingBox =
     //   `min_lat=${MinimumLatitude}&max_lat=${MaximumLatitude}&min_lon=${MinimumLongitude}&max_lon=${MaximumLongitude}`;
@@ -85,6 +83,8 @@ app.listen(port, async () => {
           //   Street line
           if (data && "name" in data) {
             placeMap["street_line"] = data["name"];
+          }else {
+            continue;
           }
 
           if (data && "highway" in data) {
@@ -104,9 +104,7 @@ app.listen(port, async () => {
           if (placeMap["street_line"]) {
             placeMap["fullAdress"] =
               placeMap["street_line"] + placeMap["country"];
-          } else {
-            placeMap["fullAdress"] = placeMap["country"];
-          }
+          } 
 
           places.push(placeMap);
         }
@@ -119,7 +117,15 @@ app.listen(port, async () => {
       });
   });
 
-  /// Get place by query
+    /// Get place by query from DATABASE
+    app.get("/api/address/search/", async (req, res) => {
+        const { q } = req.query;
+        
+    
+    //    TODO:
+      });
+
+  /// Get place by query from external API
   app.get("/api/places/search/", async (req, res) => {
     const { q } = req.query;
 
