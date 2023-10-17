@@ -22,7 +22,7 @@ app.listen(port, async () => {
     res.sendStatus(200);
   });
 
-  //   USING OPENMAP API
+  //   USING OPENMAP Street API
   app.get("/api/places/info/", async (req, res) => {
     const overpassEndpoint = "https://overpass-api.de/api/interpreter";
 
