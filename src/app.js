@@ -1,6 +1,8 @@
 const { default: axios } = require("axios");
 const express = require("express");
 const connectDB = require("./utils/connectdb");
+const Place = require("./models/place_model");
+const { AddAddress, findAddresses } = require("./services/place_services");
 // const { default: placeRoutes } = require("./routes/routes");
 
 const port = 3000;
@@ -14,7 +16,7 @@ app.listen(port, async () => {
   // LOGGER INFO
   console.log(`Server is running on port ${port}`);
 
-  connectDB(); // Database Connection 
+  connectDB(); // Database Connection
 
   app.get("/", (req, res) => {
     res.sendStatus(200);
@@ -30,21 +32,8 @@ app.listen(port, async () => {
     }
 
     if (!long) {
-      res.send("Invalid longitude");
+      res.send("Invalid longitudeW");
     }
-
-    // const boundingBox =
-    //   `min_lat=${MinimumLatitude}&max_lat=${MaximumLatitude}&min_lon=${MinimumLongitude}&max_lon=${MaximumLongitude}`;
-
-    // //   way["highway"](boundingBox);
-    // const overpassQuery = `
-    //   [out:json];
-    //   node(33.5556, -87.0809, 33.0176, -86.1817);
-    //   way(33.5556, -87.0809, 33.0176, -86.1817);
-    //   relation(33.5556, -87.0809, 33.0176, -86.1817);
-    //   out body;
-    // `.
-
     // 33.5556,-87.0809
 
     // ALABAMA boundingBox COORDINATE (34.999,-88.319,30.223,-84.890);
@@ -65,7 +54,7 @@ app.listen(port, async () => {
           data: overpassQuery,
         },
       })
-      .then((response) => {
+      .then(async (response) => {
         // Handle the response data (street lines) here
         console.log(response.data);
 
@@ -75,20 +64,20 @@ app.listen(port, async () => {
         const elements = data.elements;
 
         for (element of elements) {
-          let placeMap = {};
+          let place = new Place();
 
           // Checking if a property exists
           let data = element.tags;
 
           //   Street line
           if (data && "name" in data) {
-            placeMap["street_line"] = data["name"];
-          }else {
+            place.street_line = data["name"];
+          } else {
             continue;
           }
 
           if (data && "highway" in data) {
-            placeMap["highway"] = data["highway"];
+            place.highway = data["highway"];
           }
 
           if (data && "tiger:county" in data) {
@@ -96,20 +85,24 @@ app.listen(port, async () => {
             let countryInfoList = countryInfo
               .split(",")
               .map((item) => item.trim());
-            placeMap["city"] = countryInfoList[0];
-            placeMap["state"] = countryInfoList[1];
-            placeMap["country"] = countryInfo;
+            place.city = countryInfoList[0];
+            place.state = countryInfoList[1];
+            place.country = countryInfo;
           }
 
-          if (placeMap["street_line"]) {
-            placeMap["fullAdress"] =
-              placeMap["street_line"] + placeMap["country"];
-          } 
+          if (place["street_line"]) {
+            (place.fullAddress = place.street_line), +", " + place.country;
+          }
 
-          places.push(placeMap);
+          places.push(place);
         }
 
-        res.send(places);
+        res.json({
+          found: places.length > 0 ? true : false,
+          error: false,
+          totalLength: places.length,
+          places: places,
+        });
       })
       .catch((error) => {
         // Handle errors
@@ -117,13 +110,18 @@ app.listen(port, async () => {
       });
   });
 
-    /// Get place by query from DATABASE
-    app.get("/api/address/search/", async (req, res) => {
-        const { q } = req.query;
-        
-    
-    //    TODO:
-      });
+  /// Get place by query from DATABASE
+  app.get("/api/addresses/search/", async (req, res) => {
+    const { q } = req.query;
+
+    let places = await findAddresses(q);
+    res.json({
+      found: places.length > 0 ? true : false,
+      error: false,
+      totalLength: places.length,
+      places: places,
+    });
+  });
 
   /// Get place by query from external API
   app.get("/api/places/search/", async (req, res) => {
@@ -144,21 +142,25 @@ app.listen(port, async () => {
       const results = response.data.data.results;
 
       for (result of results) {
-        let { street_line, city, state, zipcode, displayAddress } = result;
-        let placeMap = {
+        let { street_line, city, state, zipcode, displayAddress } =
+          result;
+        const place = new Place({
           street_line: street_line,
           city: city,
           state: state,
-          zipcode: zipcode,
-          fullAaddress: displayAddress,
-        };
+          country: "US",
+          fullAddress: displayAddress,
+        });
 
-        places.push(placeMap);
+        await AddAddress(place);
+
+        places.push(place);
       }
 
       res.json({
-        found: true,
+        found: places.length > 0 ? true : false,
         error: false,
+        totalLength: places.length,
         places: places,
       });
     } catch (error) {

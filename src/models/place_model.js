@@ -1,5 +1,4 @@
-const mongoose = require('mongoose');
-
+const mongoose = require("mongoose");
 
 // {
 //     "street_line": "123 12th St NE",
@@ -12,20 +11,17 @@ const mongoose = require('mongoose');
 //     "displayAddress": "123 12th St NE, Norton, VA 24273"
 //   },
 
-
-
-
-
 const PlaceSchema = mongoose.Schema;
 
 const placeSchema = new PlaceSchema({
+  highway: String,
   street_line: String,
   city: String,
   state: String,
-  zipcode: String, 
-  fullAddress: String
+  country: String,
+  fullAddress: String,
 });
 
-const Place = mongoose.model('Place', userSchema);
+const Place = mongoose.model("Place", placeSchema);
 
 module.exports = Place;
